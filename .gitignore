@@ -1,4 +1,4 @@
-CCSN_dataset/
-venv/
-.idea/
-_pycache_/
+/CCSN_dataset/
+/venv/
+/.idea/
+/_pycache_/
