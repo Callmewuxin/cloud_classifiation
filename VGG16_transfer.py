@@ -4,7 +4,7 @@ from keras.layers import Activation,Add,AveragePooling1D,Dense,Dropout,GlobalAve
 from keras.preprocessing.image import ImageDataGenerator
 from keras.applications.inception_v3 import InceptionV3,preprocess_input
 from keras.models import Model
-from keras.optimizers import Adam,SGD,Adadelta,RMSprop
+from keras.optimizers import Adam,SGD,Adadelta,RMSprop, Adagrad
 from keras.utils import np_utils
 import os
 from keras.callbacks import ModelCheckpoint
@@ -14,13 +14,13 @@ import matplotlib.pyplot as plt
 
 
 
-IM_WIDTH, IM_HEIGHT =224,224 #InceptionV3指定的图片尺寸
+IM_WIDTH, IM_HEIGHT =229,229 #InceptionV3指定的图片尺寸
 train_dir = 'train_test/train'  # 训练集数据
 val_dir = 'train_test/test' # 验证集数据
 
 
 nb_classes = 11
-nb_epoches = int(500)                # epoch数量
+nb_epoches = int(5000)                # epoch数量
 batch_size = int(8)
 
 
@@ -47,48 +47,43 @@ valid_datagen =  ImageDataGenerator(height_shift_range=0.2,
 # 训练数据与测试数据
 train_generator = train_datagen.flow_from_directory(
     train_dir,
-    target_size=(224, 224),
+    target_size=(IM_WIDTH, IM_HEIGHT),
     batch_size=batch_size,
     class_mode='categorical')#subset='training'，假如设置了（1），可以通过设置subset来分配训练集和验证集
 
 valid_generator = valid_datagen.flow_from_directory(
     val_dir,
-    target_size=(224, 224),
+    target_size=(IM_WIDTH, IM_HEIGHT),
     batch_size=batch_size,
     class_mode='categorical')#subset='validation'
 
+base_model = InceptionV3(weights='imagenet', include_top=False,input_shape=(IM_WIDTH,IM_HEIGHT,3)) # 预先要下载no_top模型
 
-def add_new_last_layer(base_model, nb_classes):
-    x = base_model.layers[-6].output#注意这个地方-------->>>>base_model.layers[11].output 这样就可以控制我们导入的模型到底使用多少层
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(512,activation='relu')(x)
-    x = Dense(128,activation='relu')(x)
-    x = Dropout(0.2)(x)
-    predictions = Dense(nb_classes, activation='softmax')(x) #new softmax layer
-    model = Model(input=base_model.input, output=predictions)
-    return model
+x = base_model.output
+x = GlobalAveragePooling2D()(x) # GlobalAveragePooling2D 将 MxNxC 的张量转换成 1xC 张量，C是通道数
+x = Dense(1024, activation='relu')(x)
+predictions = Dense(nb_classes, activation='softmax')(x)
+model = Model(inputs=base_model.input,outputs=predictions)
 
-rmsprop=RMSprop(lr=0.001, rho=0.9, decay=0.0001)
-# 冻上base_model所有层，这样就可以正确获得bottleneck特征
 def setup_to_transfer_learn(model, base_model):
     """Freeze all layers and compile the model"""
     for layer in base_model.layers:
         layer.trainable =False#这里可以设置我们导入base_model哪些层可以训练，哪些层参数是固定的
-        model.compile(optimizer=rmsprop, loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 # 定义网络框架
-base_model = VGG16(weights='imagenet', include_top=False,input_shape=(224,224,3)) # 预先要下载no_top模型
-print("Total layers'number is:", len(base_model.layers))
-base_model.summary()
+def setup_to_fine_tune(model,base_model):
+    GAP_LAYER = 17 # max_pooling_2d_2
+    for layer in base_model.layers[:GAP_LAYER+1]:
+        layer.trainable = False
+    for layer in base_model.layers[GAP_LAYER+1:]:
+        layer.trainable = True
+    model.compile(optimizer=Adagrad(lr=0.0001),loss='categorical_crossentropy',metrics=['accuracy'])
 
-
-
-
-model = add_new_last_layer(base_model,11)  # 从base_model上添加新层
 setup_to_transfer_learn(model, base_model)
 model.summary()
 
-filepath="cloud_vgg.h5"
+filepath="cloud_inp.h5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
@@ -109,17 +104,14 @@ validation_steps = STEP_SIZE_VALID,
 class_weight='auto',
 callbacks=callbacks_list)
 
-
-# In[34]:
-
-
-
-
-
-# In[35]:
-
-
-# learning curves
+setup_to_fine_tune(model,base_model)
+history_ft = model.fit_generator(train_generator,
+nb_epoch=nb_epoches,
+validation_data=valid_generator,
+steps_per_epoch= STEP_SIZE_TRAIN,
+validation_steps = STEP_SIZE_VALID,
+class_weight='auto',
+callbacks=callbacks_list)
 fig,ax = plt.subplots(2,1,figsize=(10,10))
 ax[0].plot(history_tl.history['loss'], color='r', label='Training Loss')
 ax[0].plot(history_tl.history['val_loss'], color='g', label='Validation Loss')
