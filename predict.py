@@ -35,7 +35,7 @@ name = {'Ci':'Cirrus',
         'Cu':'Cumulus',
         'Cb':'Cumulonimbus',
         'Ns':'Nimbostratus',
-        'Sc':' Stratocumulus',
+        'Sc':'Stratocumulus',
         'St' : 'Stratus',
         'Ct' : 'Contrails'}
 weather = {
