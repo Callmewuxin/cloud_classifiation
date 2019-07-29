@@ -62,6 +62,7 @@ base_model = InceptionV3(weights='imagenet', include_top=False,input_shape=(IM_W
 x = base_model.output
 x = GlobalAveragePooling2D()(x) # GlobalAveragePooling2D 将 MxNxC 的张量转换成 1xC 张量，C是通道数
 x = Dense(1024, activation='relu')(x)
+x = Dropout(0.2)(x)
 predictions = Dense(nb_classes, activation='softmax')(x)
 model = Model(inputs=base_model.input,outputs=predictions)
 

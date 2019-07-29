@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Forest Fire detection</title>
+    <title>Cloud Classification</title>
     <style xmlns="http://www.w3.org/1999/xhtml" type="text/css">
 
 
@@ -223,7 +223,7 @@
         var self = this;
         //如果不理解我写的，可以看看我的前几篇文章
         $.ajax({
-            url: "http://127.0.0.1:5000/photo", //url
+            url: "http://192.168.0.131:1234/photo", //url
             type: "post",
             dataType: "json",
             cache: false,
@@ -231,10 +231,13 @@
             processData: false,// 不处理数据
             contentType: false, // 不设置内容类型
             success: function(result){
-                console.log(result);
-                var res = document.getElementById("res");
-                res.innerText = result["prediction"];
-
+                console.log(result);//打印服务端返回的数据(调试用)
+                var nameregion = document.getElementById("name");
+                var desregion = document.getElementById('description');
+                var weatherregion = document.getElementById('weather');
+                nameregion.innerHTML = "Cloud Type: " + result["cloud_name"];
+                desregion.innerHTML = "Description: " + result["description"];
+                weatherregion.innerHTML = "The most likely upcoming weather: "+ result["weather"]
 
             }
 
@@ -248,12 +251,12 @@
         <table xmlns="http://www.w3.org/1999/xhtml">
 			<tr>
 				<td>
-                    <img align="left" width="150" height="70" src="static/head.png" />
+                    <img align="left" width="150" height="70" src="static/cloudtype.webp" />
 			</td>
 
 			 <td>
 				<div align="left">
-					<b>Forest Fire Detection<br /></b>
+					<b>Cloud type classification<br /></b>
 					<br />
 				<form id="formTag1" enctype="multipart/form-data"  >
             <input class="uploadImg" type="file" name="file" id="file1"  onchange="upload(this)" multiple>
@@ -271,18 +274,13 @@
 			</div>
 		-->
     <img src="" id="show" style="width: auto; height: auto;">
-      <div id="prediction">
-        <h3 id="res"></h3>
-    </div>
-    </div>
+<div id = 'result'>
+    <h3 id="name"></h3>
+    <h4 id="description"></h4>
+    <h4 id="weather"></h4>
+</div>
  <p xmlns="http://www.w3.org/1999/xhtml" style="text-align:left;margin-left:30px;margin-right:30px;line-height:140%;">
 	<hr/>
-    <h3>Instructions</h3>
-					<ul>
-						<li><b>Upload</b> one forest picture using the "Browse" button. </li>
-						<li><b>Dislplay</b> the picture which loaded. </li>
-						<li><b>Predict</b> whether forest fire exists. </li>
-					</ul>
-        </p>
+    </div>
 </body>
 </html>
